@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, doc, getDoc } from 'firebase/firestore';
-import { AuthPage } from './components/authPage';
+import { AuthPage } from './components/AuthPage';
 import { BusinessSetupPage } from './components/BusinessSetupPage';
 import { AppLayout } from './components/AppLayout';
 import SubscriptionPage from './components/SubscriptionPage';
