@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>404 - Page Not Found</title>
+    <style>
+        /* A simple, clean, modern-looking 404 page */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #f8fafc; /* Tailwind gray-50 */
+            color: #1f2937; /* Tailwind gray-800 */
+            margin: 0;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            text-align: center;
+        }
+
+        .container {
+            padding: 2rem;
+            max-width: 600px;
+            margin: 1rem;
+        }
+
+        .status-code {
+            font-size: 10rem;
+            font-weight: 900;
+            line-height: 1;
+            color: #4f46e5; /* Tailwind indigo-600 */
+        }
+
+        .heading {
+            font-size: 2.25rem;
+            font-weight: 700;
+            color: #111827; /* Tailwind gray-900 */
+            margin-top: 1rem;
+        }
+
+        .message {
+            font-size: 1.125rem;
+            color: #4b5563; /* Tailwind gray-600 */
+            margin-top: 0.5rem;
+            margin-bottom: 2.5rem;
+        }
+
+        .home-link {
+            display: inline-block;
+            background-color: #4f46e5; /* Tailwind indigo-600 */
+            color: #ffffff;
+            font-size: 1rem;
+            font-weight: 600;
+            padding: 0.75rem 2rem;
+            border-radius: 0.5rem;
+            text-decoration: none;
+            transition: background-color 0.2s ease;
+        }
+        
+        .home-link:hover {
+            background-color: #4338ca; /* Tailwind indigo-700 */
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="status-code">404</h1>
+        <h2 class="heading">Page Not Found</h2>
+        <p class="message">
+            Sorry, we couldn’t find the page you’re looking for.
+        </p>
+        <a href="/" class="home-link">Go back home</a>
+    </div>
+</body>
+</html>
