@@ -6,8 +6,8 @@ import { AuthPage } from './components/AuthPage';
 import { BusinessSetupPage } from './components/BusinessSetupPage';
 import { AppLayout } from './components/AppLayout';
 import SubscriptionPage from './components/SubscriptionPage';
-import { Analytics } from "@vercel/analytics/next"
-import { SpeedInsights } from "@vercel/speed-insights/next"
+import { Analytics } from "@vercel/analytics/react"
+import { SpeedInsights } from "@vercel/speed-insights/react"
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
