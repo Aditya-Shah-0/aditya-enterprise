@@ -43,6 +43,9 @@ export const AuthContextProvider = ({ children }) => {
                 setPurchases(purchaseRes);
             } catch (error) {
                 setError(error);
+                if (error.response?.status === 401) {
+                    localStorage.removeItem("token");
+                }
             } finally {
                 setLoading(false);
             }
@@ -62,6 +65,9 @@ export const AuthContextProvider = ({ children }) => {
             setPurchases(purchaseRes);
         } catch (error) {
             setError(error);
+            if (error.response?.status === 401) {
+                localStorage.removeItem("token");
+            }
         } finally {
             setLoading(false);
         }
@@ -72,12 +78,13 @@ export const AuthContextProvider = ({ children }) => {
             setLoading(true);
             setError(null);
             await authService.logout();
-            setOwner(null);
-            setTransaction(null);
-            setPurchases(null);
         } catch (error) {
             setError(error);
         } finally {
+            localStorage.removeItem("token");
+            setOwner(null);
+            setTransaction(null);
+            setPurchases(null);
             setLoading(false);
         }
     }

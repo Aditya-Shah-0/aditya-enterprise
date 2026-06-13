@@ -18,6 +18,9 @@ const LoginPage = () => {
     const onSubmit = async (data) => {
         try {
             const response = await authService.login(data);
+            if (response.token) {
+                localStorage.setItem("token", response.token);
+            }
             toast.success("Login successful");
             login();
             setTimeout(() => navigate("/app"), 1000);

@@ -4,9 +4,11 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate } from 'react-router-dom';
 import toast, { Toaster } from 'react-hot-toast';
 import { authService } from '../../services/authService';
+import { useAuth } from '../../context/AuthContext';
 
 const RegisterPage = () => {
     const navigate = useNavigate();
+    const { login } = useAuth();
 
     const { register, handleSubmit, setError, formState: { errors, isSubmitting, } } = useForm({
         resolver: zodResolver(RegisterSchema),
@@ -15,8 +17,12 @@ const RegisterPage = () => {
     const onSubmit = async (data) => {
         try {
             const response = await authService.register(data);
+            if (response.token) {
+                localStorage.setItem("token", response.token);
+            }
 
-            toast.success("Register Successfull.. Redirecting to login page");
+            toast.success("Registration successful. Redirecting to workspace...");
+            login();
 
             setTimeout(() => {
                 navigate('/app');
