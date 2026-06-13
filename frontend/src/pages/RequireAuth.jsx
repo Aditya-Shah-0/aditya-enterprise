@@ -2,6 +2,7 @@ import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import Sidebar from "../components/App/Sidebar/Sidebar";
 import { Loader2 } from "lucide-react";
+import logo from "../assets/360_F_831662113_ttkMPdMKmdr4bJbdp3MjJeQw4Paps66I-removebg-preview.png";
 
 const RequireAuth = () => {
     const { owner, loading } = useAuth();
@@ -15,7 +16,7 @@ const RequireAuth = () => {
                         <div className="relative">
                             <div className="absolute inset-0 bg-indigo-500 blur-xl opacity-30 rounded-full animate-pulse"></div>
                             <img
-                                src="/src/assets/360_F_831662113_ttkMPdMKmdr4bJbdp3MjJeQw4Paps66I-removebg-preview.png"
+                                src={logo}
                                 alt="Logo"
                                 className="w-20 h-20 object-contain relative z-10 animate-bounce"
                                 style={{ animationDuration: '3s' }}

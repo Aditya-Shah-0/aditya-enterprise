@@ -4,14 +4,15 @@ import { FaChartLine, FaFileInvoiceDollar, FaBoxes, FaShieldAlt } from 'react-ic
 import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
 import { Toaster } from 'react-hot-toast';
+import logo from "../../assets/360_F_831662113_ttkMPdMKmdr4bJbdp3MjJeQw4Paps66I-removebg-preview.png";
 
 export const LandingPage = () => {
     const navigate = useNavigate();
     const { error } = useAuth();
 
     useEffect(() => {
-        if (error) {
-            toast.error(error.response.data.message);
+        if (error && error.response && error.response.status !== 401) {
+            toast.error(error.response.data?.message || "Connection error occurred");
         }
     }, [error]);
 
@@ -29,7 +30,7 @@ export const LandingPage = () => {
             <nav className="relative z-50 flex items-center justify-between px-6 py-6 max-w-7xl mx-auto">
                 <div className="flex items-center space-x-2">
                     <div className="w-8 h-8 bg-linear-to-br from-indigo-500 to-purple-600 rounded-lg">
-                        <img src="../src/assets/360_F_831662113_ttkMPdMKmdr4bJbdp3MjJeQw4Paps66I-removebg-preview.png" alt="Logo" width="50" height="50" />
+                        <img src={logo} alt="Logo" width="50" height="50" />
                     </div>
                     <Link to="/" className="text-xl font-bold tracking-tight">Smart Invoice <span className="text-indigo-400"> Pro</span></Link>
                 </div>

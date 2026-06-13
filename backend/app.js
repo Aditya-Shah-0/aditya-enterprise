@@ -10,8 +10,22 @@ const cookieParser = require('cookie-parser');
 
 const port = process.env.PORT || 3000;
 
+const allowedOrigins = [
+    process.env.CORS_ORIGIN,
+    'https://aditya-enterprise-theta.vercel.app'
+];
+
 app.use(cors({
-    origin: process.env.CORS_ORIGIN,
+    origin: function (origin, callback) {
+        if (!origin) return callback(null, true);
+        const isVercel = origin.endsWith('.vercel.app');
+        const isAllowed = allowedOrigins.includes(origin) || isVercel || origin.startsWith('http://localhost');
+        if (isAllowed) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
