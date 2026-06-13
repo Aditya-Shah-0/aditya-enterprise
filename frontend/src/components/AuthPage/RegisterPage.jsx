@@ -21,8 +21,6 @@ const RegisterPage = () => {
             setTimeout(() => {
                 navigate('/app');
             }, 2000);
-
-            console.log(response.data);
         } catch (error) {
             const status = error.response?.status;
             const message = error.response?.data?.message || "Registration Failed";
