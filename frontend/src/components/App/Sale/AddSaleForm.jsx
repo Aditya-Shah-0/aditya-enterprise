@@ -13,8 +13,9 @@ import ParticularsTable from "./ParticularsTable";
 
 const AddSaleForm = () => {
   const navigate = useNavigate();
-  const { owner, transaction, refreshTransactions } = useAuth();
+  const { owner, transaction, refreshTransactions, refreshUser } = useAuth();
   const [showCustomerSuggestions, setShowCustomerSuggestions] = useState(false);
+  const [applyCredit, setApplyCredit] = useState(false);
   const billingMode = owner?.businessSettings?.billingCalculationMode || 'rate_based';
 
   const [quotations, setQuotations] = useState([]);
@@ -200,20 +201,47 @@ const AddSaleForm = () => {
   const paidAmount = useWatch({ control, name: "paidAmount" }) || 0;
   const partyNameValue = watch("partyName");
 
+  const availableCredit = useMemo(() => {
+    if (!partyNameValue || !owner?.partyCredits) return 0;
+    const match = owner.partyCredits.find(
+      (c) => c.partyName.toLowerCase() === partyNameValue.toLowerCase()
+    );
+    return match ? match.advanceBalance : 0;
+  }, [partyNameValue, owner]);
+
+  const creditToApply = useMemo(() => {
+    if (!applyCredit) return 0;
+    const subTotal = particulars?.reduce((acc, item) => acc + item.amount, 0) || 0;
+    const discountAmount = subTotal * (discountPct / 100);
+    const taxAmount = subTotal * (taxPct / 100);
+    const grandTotal = subTotal - discountAmount + taxAmount;
+    return Math.min(availableCredit, grandTotal);
+  }, [applyCredit, availableCredit, particulars, discountPct, taxPct]);
+
   const totals = useMemo(() => {
     const subTotal = particulars?.reduce((acc, item) => acc + item.amount, 0) || 0;
     const discountAmount = subTotal * (discountPct / 100);
     const taxAmount = subTotal * (taxPct / 100);
     const grandTotal = subTotal - discountAmount + taxAmount;
-    const balance = grandTotal - paidAmount;
+    const balance = Math.max(0, grandTotal - paidAmount - creditToApply);
 
     return { subTotal, discountAmount, taxAmount, grandTotal, balance };
-  }, [particulars, discountPct, taxPct, paidAmount]);
+  }, [particulars, discountPct, taxPct, paidAmount, creditToApply]);
+
+  useEffect(() => {
+    setApplyCredit(false);
+  }, [partyNameValue]);
 
   const onSubmit = async (data) => {
     try {
+      if (Number(data.paidAmount || 0) + creditToApply > totals.grandTotal) {
+        toast.error("Total paid amount (including credit) cannot exceed invoice total");
+        return;
+      }
+
       const finalPayload = {
         ...data,
+        appliedCredit: creditToApply,
         subTotal: totals.subTotal.toString(),
         grandTotal: totals.grandTotal.toString(),
         balance: totals.balance.toString(),
@@ -221,6 +249,7 @@ const AddSaleForm = () => {
       };
       await transactionService.addTransaction(finalPayload);
       await refreshTransactions();
+      await refreshUser();
 
       toast.success("Sale added successfully");
       reset();
@@ -515,6 +544,21 @@ const AddSaleForm = () => {
                   <span>Total</span>
                   <span className="text-blue-600">₹ {totals.grandTotal.toFixed(2)}</span>
                 </div>
+
+                {availableCredit > 0 && (
+                  <div className="flex justify-between items-center bg-green-50 p-2.5 rounded-lg border border-green-200 text-sm">
+                    <label className="flex items-center gap-2 text-green-700 font-semibold cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={applyCredit}
+                        onChange={(e) => setApplyCredit(e.target.checked)}
+                        className="rounded text-green-600 focus:ring-green-500 cursor-pointer h-4 w-4"
+                      />
+                      Apply Available Credit (₹{availableCredit.toFixed(2)})
+                    </label>
+                    <span className="font-bold text-green-700">- ₹{creditToApply.toFixed(2)}</span>
+                  </div>
+                )}
 
                 <div className="border-t pt-2 flex justify-between items-center">
                   <span className="font-bold">Paid</span>

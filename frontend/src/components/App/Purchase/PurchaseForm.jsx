@@ -3,12 +3,15 @@ import { Save, Plus, ShoppingCart, User, Receipt, Trash2 } from "lucide-react";
 import { purchaseService } from "../../../services/purchaseService";
 import { itemService } from "../../../services/ItemService";
 import toast from "react-hot-toast";
+import { useAuth } from "../../../context/AuthContext";
 
 const generateInvoiceNo = (count) => {
   return "PUR-" + new Date().getFullYear().toString() + "-" + (1001 + count).toString();
 };
 
 const PurchaseForm = ({ uniqueVendors, billingMode, transactionsCount, onSuccess }) => {
+  const { owner, refreshUser } = useAuth();
+
   // Form States
   const [partyName, setPartyName] = useState("");
   const [partyAddress, setPartyAddress] = useState("");
@@ -17,6 +20,8 @@ const PurchaseForm = ({ uniqueVendors, billingMode, transactionsCount, onSuccess
   const [invoiceNo, setInvoiceNo] = useState("");
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [dueDate, setDueDate] = useState(new Date().toISOString().split('T')[0]);
+
+  const [applyCredit, setApplyCredit] = useState(false);
 
   // Particulars list
   const [particulars, setParticulars] = useState([]);
@@ -64,13 +69,33 @@ const PurchaseForm = ({ uniqueVendors, billingMode, transactionsCount, onSuccess
     return sum;
   }, [particulars, itemName, qty, price, totalAmount, billingMode]);
 
+  const availableCredit = useMemo(() => {
+    if (!partyName || !owner?.partyCredits) return 0;
+    const match = owner.partyCredits.find(
+      (c) => c.partyName.toLowerCase() === partyName.toLowerCase()
+    );
+    return match ? match.advanceBalance : 0;
+  }, [partyName, owner]);
+
   const totals = useMemo(() => {
     const discountAmount = subTotal * (discountPercentage / 100);
     const taxAmount = subTotal * (taxPercentage / 100);
     const grandTotal = subTotal - discountAmount + taxAmount;
-    const balance = grandTotal - paidAmount;
-    return { discountAmount, taxAmount, grandTotal, balance };
-  }, [subTotal, discountPercentage, taxPercentage, paidAmount]);
+    const creditToApply = applyCredit ? Math.min(availableCredit, grandTotal) : 0;
+    const balance = Math.max(0, grandTotal - paidAmount - creditToApply);
+    return { discountAmount, taxAmount, grandTotal, balance, creditToApply };
+  }, [subTotal, discountPercentage, taxPercentage, paidAmount, applyCredit, availableCredit]);
+
+  useEffect(() => {
+    setApplyCredit(false);
+  }, [partyName]);
+
+  useEffect(() => {
+    const maxPaid = Math.max(0, totals.grandTotal - totals.creditToApply);
+    if (paidAmount > maxPaid) {
+      setPaidAmount(maxPaid);
+    }
+  }, [totals.grandTotal, totals.creditToApply, paidAmount]);
 
   const handleAddItem = (e) => {
     e?.preventDefault();
@@ -160,6 +185,7 @@ const PurchaseForm = ({ uniqueVendors, billingMode, transactionsCount, onSuccess
       taxPercentage,
       grandTotal: totals.grandTotal,
       paidAmount,
+      appliedCredit: totals.creditToApply,
       balance: totals.balance,
       isPaid: totals.balance <= 0,
       paymentMode
@@ -168,6 +194,7 @@ const PurchaseForm = ({ uniqueVendors, billingMode, transactionsCount, onSuccess
     try {
       await purchaseService.addPurchase(payload);
       toast.success("Purchase recorded successfully");
+      await refreshUser();
 
       // Reset form
       setPartyName("");
@@ -498,6 +525,21 @@ const PurchaseForm = ({ uniqueVendors, billingMode, transactionsCount, onSuccess
             <span>Total Cost</span>
             <span className="text-violet-600">₹ {totals.grandTotal.toFixed(2)}</span>
           </div>
+
+          {availableCredit > 0 && (
+            <div className="flex justify-between items-center bg-green-50 p-2.5 rounded-lg border border-green-200 text-xs mt-2">
+              <label className="flex items-center gap-2 text-green-700 font-semibold cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={applyCredit}
+                  onChange={(e) => setApplyCredit(e.target.checked)}
+                  className="rounded text-green-600 focus:ring-green-500 cursor-pointer h-4 w-4"
+                />
+                Apply Available Credit (₹{availableCredit.toFixed(2)})
+              </label>
+              <span className="font-bold text-green-700">- ₹{totals.creditToApply.toFixed(2)}</span>
+            </div>
+          )}
         </div>
 
         <div className="border-t border-gray-100 pt-4 grid grid-cols-2 gap-4">
@@ -525,9 +567,9 @@ const PurchaseForm = ({ uniqueVendors, billingMode, transactionsCount, onSuccess
               type="number"
               min="0"
               step="0.01"
-              max={totals.grandTotal}
+              max={Math.max(0, totals.grandTotal - totals.creditToApply)}
               value={paidAmount}
-              onChange={(e) => setPaidAmount(Math.max(0, Math.min(totals.grandTotal, Number(e.target.value))))}
+              onChange={(e) => setPaidAmount(Math.max(0, Math.min(Math.max(0, totals.grandTotal - totals.creditToApply), Number(e.target.value))))}
               className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white text-sm text-right font-bold text-violet-600"
             />
           </div>

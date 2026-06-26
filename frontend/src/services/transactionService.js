@@ -20,5 +20,9 @@ export const transactionService = {
     updateDeliveryStatus: async (id, deliveryStatus) => {
         const response = await api.patch(`/transaction/delivery/${id}`, { deliveryStatus });
         return response.data;
+    },
+    recordBulkPayment: async (data) => {
+        const response = await api.post("/transaction/bulk-payment", data);
+        return response.data;
     }
 }

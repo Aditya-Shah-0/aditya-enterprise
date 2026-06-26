@@ -49,8 +49,8 @@ const InvoiceView = () => {
                 {/* Header row aligned to scaled invoice width */}
                 <div className="w-[178.5mm] max-w-full flex justify-between items-center mb-6 print:hidden">
                     <button
-                        onClick={() => navigate(isPurchase ? "/app/purchase" : "/app/sale")}
-                        className="flex items-center gap-1.5 text-gray-600 hover:text-gray-900 font-medium transition-colors cursor-pointer bg-white border border-gray-200 px-3 py-1.5 rounded-lg shadow-sm hover:shadow hover:bg-red-400"
+                        onClick={() => navigate(-1)}
+                        className="flex items-center gap-1.5 text-gray-600 hover:text-white font-medium transition-colors cursor-pointer bg-white border border-gray-200 px-3 py-1.5 rounded-lg shadow-sm hover:shadow hover:bg-red-500"
                     >
                         <ArrowLeft className="size-4" />
                         <span>Back</span>

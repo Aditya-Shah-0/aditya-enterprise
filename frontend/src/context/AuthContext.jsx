@@ -30,6 +30,15 @@ export const AuthContextProvider = ({ children }) => {
         }
     };
 
+    const refreshUser = async () => {
+        try {
+            const response = await authService.checkUser();
+            setOwner(response.owner);
+        } catch (err) {
+            console.error("Failed to refresh user profile", err);
+        }
+    };
+
     useEffect(() => {
         const checkUser = async () => {
             try {
@@ -90,7 +99,7 @@ export const AuthContextProvider = ({ children }) => {
     }
 
     return (
-        <AuthContext.Provider value={{ owner, transaction, purchases, loading, error, login, logout, refreshTransactions, refreshPurchases }}>
+        <AuthContext.Provider value={{ owner, transaction, purchases, loading, error, login, logout, refreshTransactions, refreshPurchases, refreshUser }}>
             {children}
         </AuthContext.Provider>
     )

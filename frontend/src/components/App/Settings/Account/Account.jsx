@@ -71,7 +71,7 @@ const Account = () => {
     };
 
     return (
-        <div className="min-h-screen bg-gray-200 font-sans rounded-2xl">
+        <div className="min-h-screen bg-slate-50 font-sans rounded-2xl">
 
             <Toaster />
 

@@ -170,14 +170,14 @@ const BussinessSetupPage = () => {
 
     if (isPageLoading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-200">
+            <div className="min-h-screen flex items-center justify-center bg-slate-50">
                 <Loader2 className="animate-spin text-indigo-600" size={40} />
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-gray-200 font-sans rounded-2xl">
+        <div className="min-h-screen bg-slate-50 font-sans rounded-2xl">
             <Toaster />
 
             {/* HEADER */}

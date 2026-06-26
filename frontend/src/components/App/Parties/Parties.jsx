@@ -5,15 +5,94 @@ import toast, { Toaster } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import PartyListSidebar from "./PartyListSidebar";
 import PartyDetailsView from "./PartyDetailsView";
+import PaymentModal from "../Common/PaymentModal";
+import BulkPaymentModal from "../Common/BulkPaymentModal";
+import { transactionService } from "../../../services/transactionService";
+import { purchaseService } from "../../../services/purchaseService";
 
 const Parties = () => {
   const navigate = useNavigate();
-  const { transaction, purchases } = useAuth();
+  const { transaction, purchases, owner, refreshTransactions, refreshPurchases, refreshUser } = useAuth();
 
   // UI Filters
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilter, setActiveFilter] = useState("all"); // 'all', 'customer', 'supplier'
   const [selectedPartyName, setSelectedPartyName] = useState(null);
+
+  // Payment Modal State
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [selectedTxn, setSelectedTxn] = useState(null);
+
+  // Bulk Payment Modal State
+  const [isBulkPaymentModalOpen, setIsBulkPaymentModalOpen] = useState(false);
+  const [bulkPaymentParty, setBulkPaymentParty] = useState(null);
+
+  const handleRecordPayment = (txn) => {
+    setSelectedTxn(txn);
+    setIsPaymentModalOpen(true);
+  };
+
+  const handleRecordBulkPayment = (party) => {
+    setBulkPaymentParty(party);
+    setIsBulkPaymentModalOpen(true);
+  };
+
+  const savePayment = async (paymentData) => {
+    if (!selectedTxn) return;
+    try {
+      if (selectedTxn.txnType === "sale") {
+        const response = await transactionService.updateTransaction(selectedTxn._id, paymentData);
+        if (response.success || response.transaction) {
+          toast.success("Payment recorded successfully");
+          await refreshTransactions();
+          await refreshUser();
+        } else {
+          toast.error("Failed to record payment");
+        }
+      } else if (selectedTxn.txnType === "purchase") {
+        const response = await purchaseService.updatePurchase(selectedTxn._id, paymentData);
+        if (response.success || response.purchase) {
+          toast.success("Payment recorded successfully");
+          await refreshPurchases();
+          await refreshUser();
+        } else {
+          toast.error("Failed to record payment");
+        }
+      }
+      setIsPaymentModalOpen(false);
+      setSelectedTxn(null);
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to record payment");
+    }
+  };
+
+  const saveBulkPayment = async (bulkData) => {
+    if (!bulkPaymentParty) return;
+    try {
+      const payload = {
+        partyName: bulkPaymentParty.name,
+        amount: bulkData.amount,
+        paymentMode: bulkData.paymentMode,
+        date: bulkData.date,
+        type: bulkData.type
+      };
+      const response = await transactionService.recordBulkPayment(payload);
+      if (response.success) {
+        toast.success("Bulk payment applied successfully!");
+        await refreshTransactions();
+        await refreshPurchases();
+        await refreshUser();
+      } else {
+        toast.error("Failed to apply bulk payment");
+      }
+      setIsBulkPaymentModalOpen(false);
+      setBulkPaymentParty(null);
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to apply bulk payment");
+    }
+  };
 
   // Dynamic grouping of parties from Sales and Purchases databases
   const partiesData = useMemo(() => {
@@ -95,8 +174,14 @@ const Parties = () => {
       }
     });
 
+    const credits = owner?.partyCredits || [];
+    Object.keys(partiesMap).forEach(name => {
+      const creditEntry = credits.find(c => c.partyName.toLowerCase() === name.toLowerCase());
+      partiesMap[name].advanceBalance = creditEntry ? creditEntry.advanceBalance : 0;
+    });
+
     return Object.values(partiesMap);
-  }, [transaction, purchases]);
+  }, [transaction, purchases, owner]);
 
   // Apply Filter & Search
   const filteredParties = useMemo(() => {
@@ -224,7 +309,40 @@ const Parties = () => {
         partyTimeline={partyTimeline}
         copyToClipboard={copyToClipboard}
         navigate={navigate}
+        onRecordPayment={handleRecordPayment}
+        onRecordBulkPayment={handleRecordBulkPayment}
       />
+
+      {selectedTxn && (
+        <PaymentModal
+          isOpen={isPaymentModalOpen}
+          onClose={() => {
+            setIsPaymentModalOpen(false);
+            setSelectedTxn(null);
+          }}
+          onSave={savePayment}
+          title={selectedTxn.txnType === "sale" ? "Record Customer Payment" : "Record Supplier Payment"}
+          docNo={selectedTxn.invoiceNo}
+          partyName={selectedTxn.partyName}
+          totalAmount={selectedTxn.grandTotal}
+          paidAmount={selectedTxn.paidAmount}
+          currentBalance={selectedTxn.grandTotal - selectedTxn.paidAmount}
+        />
+      )}
+
+      {bulkPaymentParty && (
+        <BulkPaymentModal
+          isOpen={isBulkPaymentModalOpen}
+          onClose={() => {
+            setIsBulkPaymentModalOpen(false);
+            setBulkPaymentParty(null);
+          }}
+          onSave={saveBulkPayment}
+          partyName={bulkPaymentParty.name}
+          outstandingBalance={bulkPaymentParty.isCustomer ? bulkPaymentParty.receivable : bulkPaymentParty.payable}
+          type={bulkPaymentParty.isCustomer ? "sale" : "purchase"}
+        />
+      )}
     </div>
   );
 };

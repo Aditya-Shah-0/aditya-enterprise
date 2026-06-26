@@ -71,6 +71,12 @@ const ownerSchema = new mongoose.Schema({
             type: mongoose.Schema.Types.ObjectId,
             ref: 'Quotation'
         }
+    ],
+    partyCredits: [
+        {
+            partyName: { type: String, required: true },
+            advanceBalance: { type: Number, default: 0 }
+        }
     ]
 })
 

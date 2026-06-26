@@ -1,28 +1,64 @@
 const transactionSchema = require("../models/transactionSchema");
 const ownerSchema = require("../models/owners");
+const Item = require("../models/itemSchema");
+const purchaseSchema = require("../models/purchaseSchema");
 
 const addTransaction = async (req, res) => {
     try {
-        const { ...transactionData } = req.body;
+        const { appliedCredit, ...transactionData } = req.body;
         const owner = await ownerSchema.findById(req.owner.ownerId);
         if (!owner) {
             return res.status(404).json({ error: "Owner not found" });
         }
+
+        let creditPaid = 0;
+        if (appliedCredit && Number(appliedCredit) > 0) {
+            const creditToApply = Number(appliedCredit);
+            let creditEntry = owner.partyCredits?.find(c => c.partyName.toLowerCase() === transactionData.partyName.toLowerCase());
+            if (creditEntry && creditEntry.advanceBalance >= creditToApply) {
+                creditEntry.advanceBalance -= creditToApply;
+                creditPaid = creditToApply;
+            }
+        }
+
         const transaction = new transactionSchema({
             userId: owner._id,
             ...transactionData
         });
-        if (transaction.paidAmount > 0) {
-            transaction.payments = [{
-                amount: transaction.paidAmount,
-                date: transaction.date || new Date(),
-                paymentMode: transaction.paymentMode || "Cash"
-            }];
+
+        transaction.payments = [];
+        if (creditPaid > 0) {
+            transaction.payments.push({
+                amount: creditPaid,
+                date: transactionData.date || new Date(),
+                paymentMode: "Advance Credit"
+            });
         }
-        transaction.balance = Math.max(0, transaction.grandTotal - (transaction.paidAmount || 0));
+        if (transaction.paidAmount > 0) {
+            transaction.payments.push({
+                amount: transaction.paidAmount,
+                date: transactionData.date || new Date(),
+                paymentMode: transactionData.paymentMode || "Cash"
+            });
+        }
+
+        transaction.paidAmount = (transaction.paidAmount || 0) + creditPaid;
+        transaction.balance = Math.max(0, transaction.grandTotal - transaction.paidAmount);
         transaction.isPaid = transaction.balance <= 0;
         await transaction.save();
         owner.transactions.push(transaction._id);
+
+        // Auto-sync items to Material Stock (Deduct on Sale)
+        if (transactionData.particulars && Array.isArray(transactionData.particulars)) {
+            for (const itemData of transactionData.particulars) {
+                const existingItem = await Item.findOne({ userId: owner._id, name: itemData.name });
+                if (existingItem) {
+                    existingItem.quantity = Math.max(0, existingItem.quantity - Number(itemData.qty || 0));
+                    await existingItem.save();
+                }
+            }
+        }
+
         await owner.save();
         res.status(201).json({ transaction, message: "successFully added transaction" });
     } catch (error) {
@@ -107,6 +143,29 @@ const modifyTransaction = async (req, res) => {
             return res.status(403).json({ error: "Unauthorized access" });
         }
 
+        // Reconcile Material Stock quantities:
+        // 1. Add back old transaction quantities to stock
+        if (transaction.particulars && Array.isArray(transaction.particulars)) {
+            for (const oldItem of transaction.particulars) {
+                const existingItem = await Item.findOne({ userId: req.owner.ownerId, name: oldItem.name });
+                if (existingItem) {
+                    existingItem.quantity += Number(oldItem.qty || 0);
+                    await existingItem.save();
+                }
+            }
+        }
+
+        // 2. Deduct new transaction quantities from stock
+        if (updateData.particulars && Array.isArray(updateData.particulars)) {
+            for (const newItem of updateData.particulars) {
+                const existingItem = await Item.findOne({ userId: req.owner.ownerId, name: newItem.name });
+                if (existingItem) {
+                    existingItem.quantity = Math.max(0, existingItem.quantity - Number(newItem.qty || 0));
+                    await existingItem.save();
+                }
+            }
+        }
+
         // Update fields (invoiceNo is locked / read-only)
         transaction.partyName = updateData.partyName;
         transaction.partyAddress = updateData.partyAddress;
@@ -183,10 +242,91 @@ const updateDeliveryStatus = async (req, res) => {
     }
 };
 
+const recordBulkPayment = async (req, res) => {
+    try {
+        const { partyName, amount, paymentMode, date, type } = req.body;
+        const paymentAmount = Number(amount);
+        if (isNaN(paymentAmount) || paymentAmount <= 0) {
+            return res.status(400).json({ error: "Invalid payment amount" });
+        }
+        if (!partyName) {
+            return res.status(400).json({ error: "Party name is required" });
+        }
+        if (!["sale", "purchase"].includes(type)) {
+            return res.status(400).json({ error: "Invalid payment type" });
+        }
+
+        const owner = await ownerSchema.findById(req.owner.ownerId);
+        if (!owner) {
+            return res.status(404).json({ error: "Owner not found" });
+        }
+
+        let remaining = paymentAmount;
+
+        if (type === "sale") {
+            const transactions = await transactionSchema.find({ userId: owner._id, partyName: partyName, isPaid: false }).sort({ date: 1 });
+            for (const txn of transactions) {
+                if (remaining <= 0) break;
+                const billBalance = txn.grandTotal - txn.paidAmount;
+                const applied = Math.min(remaining, billBalance);
+
+                txn.payments.push({
+                    amount: applied,
+                    date: date ? new Date(date) : new Date(),
+                    paymentMode: paymentMode || "Cash"
+                });
+                txn.paidAmount += applied;
+                txn.balance = Math.max(0, txn.grandTotal - txn.paidAmount);
+                txn.isPaid = txn.balance <= 0;
+                await txn.save();
+                remaining -= applied;
+            }
+        } else {
+            const purchases = await purchaseSchema.find({ userId: owner._id, partyName: partyName, isPaid: false }).sort({ date: 1 });
+            for (const pur of purchases) {
+                if (remaining <= 0) break;
+                const billBalance = pur.grandTotal - pur.paidAmount;
+                const applied = Math.min(remaining, billBalance);
+
+                pur.payments.push({
+                    amount: applied,
+                    date: date ? new Date(date) : new Date(),
+                    paymentMode: paymentMode || "Cash"
+                });
+                pur.paidAmount += applied;
+                pur.balance = Math.max(0, pur.grandTotal - pur.paidAmount);
+                pur.isPaid = pur.balance <= 0;
+                await pur.save();
+                remaining -= applied;
+            }
+        }
+
+        // Save leftover to advance credits
+        if (remaining > 0) {
+            if (!owner.partyCredits) {
+                owner.partyCredits = [];
+            }
+            let creditEntry = owner.partyCredits.find(c => c.partyName.toLowerCase() === partyName.toLowerCase());
+            if (creditEntry) {
+                creditEntry.advanceBalance += remaining;
+            } else {
+                owner.partyCredits.push({ partyName, advanceBalance: remaining });
+            }
+            await owner.save();
+        }
+
+        res.status(200).json({ success: true, remainingLeftover: remaining, message: "Bulk payment applied successfully" });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Failed to apply bulk payment" });
+    }
+};
+
 module.exports = {
     addTransaction,
     getTransactions,
     updateTransaction,
     modifyTransaction,
-    updateDeliveryStatus
+    updateDeliveryStatus,
+    recordBulkPayment
 };

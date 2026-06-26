@@ -17,7 +17,7 @@ const Sidebar = () => {
   ];
 
   return (
-    <div className="bg-gray-200 text-black border-8 border-double h-full flex flex-col transition-all duration-300 z-20 w-64 rounded-2xl">
+    <div className="bg-slate-100 text-black border-8 border-double h-full flex flex-col transition-all duration-300 z-20 w-64 rounded-2xl">
       <div className="flex items-center justify-between p-4 border-b-4 border-double border-black dark:border-white h-14">
         <Link to="/app" className="text-xl font-bold truncate">BussinessName</Link>
         <button

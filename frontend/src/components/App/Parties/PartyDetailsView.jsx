@@ -9,7 +9,9 @@ export const PartyDetailsView = ({
   partyItems,
   partyTimeline,
   copyToClipboard,
-  navigate
+  navigate,
+  onRecordPayment,
+  onRecordBulkPayment
 }) => {
   if (!activeParty) {
     return (
@@ -69,6 +71,25 @@ export const PartyDetailsView = ({
                   >
                     <Copy className="size-3.5" />
                   </button>
+                </div>
+              )}
+            </div>
+
+            {/* Bulk Payment & Credit Section */}
+            <div className="flex flex-col items-end gap-2.5 z-10">
+              {((activeParty.isCustomer && activeParty.receivable > 0) || 
+                (activeParty.isSupplier && activeParty.payable > 0)) && (
+                <button
+                  onClick={() => onRecordBulkPayment(activeParty)}
+                  className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm px-4 py-2.5 rounded-xl shadow-xs hover:shadow transition-all cursor-pointer w-full sm:w-auto justify-center"
+                >
+                  Record Bulk Payment
+                </button>
+              )}
+              {activeParty.advanceBalance > 0 && (
+                <div className="text-sm font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-3 py-1.5 rounded-lg flex items-center gap-1.5">
+                  <span className="size-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                  <span>Advance Credit: ₹{activeParty.advanceBalance.toFixed(2)}</span>
                 </div>
               )}
             </div>
@@ -220,13 +241,24 @@ export const PartyDetailsView = ({
                         </span>
                       </td>
                       <td className="px-3 py-3 text-center">
-                        <button
-                          onClick={() => navigate(`/app/sale/invoiceview/${item._id}`)}
-                          className="p-1 hover:bg-gray-100 rounded text-violet-600 transition-colors cursor-pointer"
-                          title="View Invoice Document"
-                        >
-                          <Eye className="size-4.5" />
-                        </button>
+                        <div className="flex items-center justify-center gap-2">
+                          <button
+                            onClick={() => navigate(`/app/sale/invoiceview/${item._id}`)}
+                            className="p-1 hover:bg-gray-100 rounded text-violet-600 transition-colors cursor-pointer"
+                            title="View Invoice Document"
+                          >
+                            <Eye className="size-4.5" />
+                          </button>
+                          {!item.isPaid && onRecordPayment && (
+                            <button
+                              onClick={() => onRecordPayment(item)}
+                              className="p-1 hover:bg-emerald-50 text-emerald-600 hover:text-emerald-700 rounded transition-colors cursor-pointer flex items-center justify-center"
+                              title="Record Payment"
+                            >
+                              <span className="text-[11px] font-bold font-sans px-0.5">₹+</span>
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))

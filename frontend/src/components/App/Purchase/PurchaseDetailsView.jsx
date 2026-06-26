@@ -40,7 +40,7 @@ export const PurchaseDetailsView = () => {
       <div className="max-w-6xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-4 border-b border-gray-200">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => navigate("/app/purchase")}
+            onClick={() => navigate(-1)}
             className="flex items-center justify-center p-2 bg-white hover:bg-gray-100 border border-gray-200 rounded-lg text-gray-600 hover:text-black cursor-pointer shadow-xs transition-colors"
           >
             <ArrowLeft size={18} />

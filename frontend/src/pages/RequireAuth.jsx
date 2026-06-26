@@ -10,7 +10,7 @@ const RequireAuth = () => {
     if (loading) {
         return (
             <div className="bg-black h-screen flex p-2 gap-2 overflow-hidden">
-                <div className="flex-1 bg-gray-200 dark:bg-gray-900 border-8 border-double border-black dark:border-gray-800 transition-all duration-300 h-full rounded-2xl overflow-hidden flex items-center justify-center">
+                <div className="flex-1 bg-slate-50 dark:bg-gray-900 border-8 border-double border-black dark:border-gray-800 transition-all duration-300 h-full rounded-2xl overflow-hidden flex items-center justify-center">
                     <div className="flex flex-col items-center justify-center space-y-6">
                         {/* Logo with subtle pulse effect behind it */}
                         <div className="relative">
@@ -43,7 +43,7 @@ const RequireAuth = () => {
         <>
             <div className="bg-black h-screen flex p-2 gap-2 overflow-hidden">
                 <Sidebar />
-                <div className="flex-1 bg-gray-200 border-8 border-double border-black transition-all duration-300 h-full rounded-2xl overflow-y-auto no-scrollbar">
+                <div className="flex-1 bg-slate-50 border-8 border-double border-black transition-all duration-300 h-full rounded-2xl overflow-y-auto no-scrollbar">
                     <div className="container mx-auto p-2 md:p-4">
                         <Outlet />
                     </div>

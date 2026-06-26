@@ -4,23 +4,45 @@ const Item = require("../models/itemSchema");
 
 const addPurchase = async (req, res) => {
     try {
-        const { ...purchaseData } = req.body;
+        const { appliedCredit, ...purchaseData } = req.body;
         const owner = await ownerSchema.findById(req.owner.ownerId);
         if (!owner) {
             return res.status(404).json({ error: "Owner not found" });
         }
-                const purchase = new purchaseSchema({
+
+        let creditPaid = 0;
+        if (appliedCredit && Number(appliedCredit) > 0) {
+            const creditToApply = Number(appliedCredit);
+            let creditEntry = owner.partyCredits?.find(c => c.partyName.toLowerCase() === purchaseData.partyName.toLowerCase());
+            if (creditEntry && creditEntry.advanceBalance >= creditToApply) {
+                creditEntry.advanceBalance -= creditToApply;
+                creditPaid = creditToApply;
+            }
+        }
+
+        const purchase = new purchaseSchema({
             userId: owner._id,
             ...purchaseData
         });
-        if (purchase.paidAmount > 0) {
-            purchase.payments = [{
-                amount: purchase.paidAmount,
-                date: purchase.date || new Date(),
-                paymentMode: purchase.paymentMode || "Cash"
-            }];
+
+        purchase.payments = [];
+        if (creditPaid > 0) {
+            purchase.payments.push({
+                amount: creditPaid,
+                date: purchaseData.date || new Date(),
+                paymentMode: "Advance Credit"
+            });
         }
-        purchase.balance = Math.max(0, purchase.grandTotal - (purchase.paidAmount || 0));
+        if (purchase.paidAmount > 0) {
+            purchase.payments.push({
+                amount: purchase.paidAmount,
+                date: purchaseData.date || new Date(),
+                paymentMode: purchaseData.paymentMode || "Cash"
+            });
+        }
+
+        purchase.paidAmount = (purchase.paidAmount || 0) + creditPaid;
+        purchase.balance = Math.max(0, purchase.grandTotal - purchase.paidAmount);
         purchase.isPaid = purchase.balance <= 0;
         await purchase.save();
         owner.purchases.push(purchase._id);
